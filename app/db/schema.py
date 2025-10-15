@@ -35,6 +35,64 @@ class FileMetadata(Base):
     records_loaded: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class ParticipantDemographic(Base):
+    __tablename__ = "participant_demographic"
+
+    participant_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nhs_number: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True, index=True)
+    superseded_by_nhs_number: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # Care provider information
+    primary_care_provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    primary_care_provider_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+    current_posting: Mapped[str | None] = mapped_column(String, nullable=True)
+    current_posting_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Name fields
+    name_prefix: Mapped[str | None] = mapped_column(String, nullable=True)
+    given_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    other_given_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    family_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    previous_family_name: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Personal details
+    date_of_birth: Mapped[str | None] = mapped_column(String, nullable=True)
+    gender: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Address fields
+    address_line_1: Mapped[str | None] = mapped_column(String, nullable=True)
+    address_line_2: Mapped[str | None] = mapped_column(String, nullable=True)
+    address_line_3: Mapped[str | None] = mapped_column(String, nullable=True)
+    address_line_4: Mapped[str | None] = mapped_column(String, nullable=True)
+    address_line_5: Mapped[str | None] = mapped_column(String, nullable=True)
+    post_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    paf_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    usual_address_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Death information
+    date_of_death: Mapped[str | None] = mapped_column(String, nullable=True)
+    death_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Contact information
+    telephone_number_home: Mapped[str | None] = mapped_column(String, nullable=True)
+    telephone_number_home_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+    telephone_number_mob: Mapped[str | None] = mapped_column(String, nullable=True)
+    telephone_number_mob_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_address_home: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_address_home_from_dt: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Language and accessibility
+    preferred_language: Mapped[str | None] = mapped_column(String, nullable=True)
+    interpreter_required: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    invalid_flag: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Audit fields
+    record_insert_datetime: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC)
+    )
+    record_update_datetime: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class CohortUpdate(Base):
     __tablename__ = "cohort_update"
 
