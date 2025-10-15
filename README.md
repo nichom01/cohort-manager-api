@@ -107,7 +107,7 @@ Load CSV or Parquet files containing cohort data into the database.
 curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
      -H "Content-Type: application/json" \
      -d '{
-       "file_path": "/Users/yourname/data/cohort_data.csv",
+       "file_path": "./tests/uploads/test_cohort_data_20_records.csv",
        "file_type": "csv"
      }'
 ```
@@ -117,7 +117,7 @@ curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
 curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
      -H "Content-Type: application/json" \
      -d '{
-       "file_path": "/Users/yourname/data/cohort_data.parquet",
+       "file_path": "./tests/uploads/test_cohort_data_20_records.parquet",
        "file_type": "parquet"
      }'
 ```
