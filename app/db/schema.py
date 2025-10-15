@@ -35,6 +35,42 @@ class FileMetadata(Base):
     records_loaded: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class ParticipantManagement(Base):
+    __tablename__ = "participant_management"
+
+    participant_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    screening_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    nhs_number: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True, index=True)
+    record_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    eligibility_flag: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason_for_removal: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    reason_for_removal_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+    business_rule_version: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    exception_flag: Mapped[int] = mapped_column(Integer, nullable=False)
+    blocked_flag: Mapped[int] = mapped_column(Integer, nullable=False)
+    referral_flag: Mapped[int] = mapped_column(Integer, nullable=False)
+    next_test_due_date: Mapped[datetime | None] = mapped_column(nullable=True)
+    next_test_due_date_calc_method: Mapped[str | None] = mapped_column(String, nullable=True)
+    participant_screening_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    screening_ceased_reason: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_higher_risk: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_higher_risk_active: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    higher_risk_next_test_due_date: Mapped[datetime | None] = mapped_column(nullable=True)
+    higher_risk_referral_reason_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    date_irradiated: Mapped[datetime | None] = mapped_column(nullable=True)
+    gene_code_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    src_system_processed_datetime: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Traceability field
+    cohort_update_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+    # Audit fields
+    record_insert_datetime: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC)
+    )
+    record_update_datetime: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class ParticipantDemographic(Base):
     __tablename__ = "participant_demographic"
 
