@@ -1,0 +1,60 @@
+The first feature is to create an endpoint that takes a file name, location, filetype.
+
+The first implementation will be using a parquet or csv. The task is to move the contents of the file into a database table adding 3 columns:
+
+createDate
+file id
+identity field (PK)
+
+The file structure is as follows:
+
+Record Type values
+The record type field should contain one of these values:
+ADD
+AMENDED
+DEL
+
+Boolean Fields
+We have three boolean fields that accept true or false only:
+eligibility
+is_interpreter_required
+invalid_flag
+
+Number fields
+Fields that accept numbers only are:
+change_time_stamp
+serial_change_number
+nhs_number
+superseded_by_nhs_number
+gender
+death_status
+String fields
+These fields will accept strings:
+primary_care_provider
+primary_care_effective_from_date
+current_posting
+current_posting_effective_from_date
+name_prefix
+given_name
+other_given_name
+family_name
+previous_family_name
+date_of_birth
+address_line_1
+address_line_2
+address_line_3
+address_line_4
+address_line_5
+postcode
+paf_key
+address_effective_from_date
+reason_for_removal
+reason_for_removal_effective_from_date
+date_of_death
+home_telephone_number
+home_telephone_effective_from_date
+mobile_telephone_number
+mobile_telephone_effective_from_date
+email_address
+email_address_effective_from_date
+preferred_language

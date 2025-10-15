@@ -1,9 +1,11 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.user import get_user_service
+from app.db.schema import Base
 from app.main import app
 from app.services.user_service import UserService
-from tests.test_db import TestingSessionLocal
+from tests.test_db import TestingSessionLocal, engine
 
 # Setup the TestClient
 client = TestClient(app)
@@ -16,6 +18,13 @@ def override_get_user_service():
 
 
 app.dependency_overrides[get_user_service] = override_get_user_service
+
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
 def test_create_and_get_user():

@@ -83,7 +83,7 @@ When adding a new resource endpoint:
 
 ## Source Control
 
-**Repository:** `git@github.com:nichom01/python-ui-base.git`
+**Repository:** `git@github.com:nichom01/cohort-manager-api.git`
 
 **Commit Message Guidelines:**
 - Focus on functional changes made since the last commit
