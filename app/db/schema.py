@@ -20,6 +20,21 @@ class User(Base):
     name: Mapped[str] = mapped_column(String, index=True)
 
 
+class FileMetadata(Base):
+    __tablename__ = "file_metadata"
+
+    file_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    file_path: Mapped[str] = mapped_column(String, nullable=False)
+    file_type: Mapped[str] = mapped_column(String, nullable=False)  # "csv" or "parquet"
+    file_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    upload_timestamp: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC)
+    )
+    records_loaded: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class CohortUpdate(Base):
     __tablename__ = "cohort_update"
 

@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.schema import CohortUpdate
+from app.db.schema import CohortUpdate, FileMetadata
 
 
 class CohortService:
@@ -23,15 +23,12 @@ class CohortService:
 
     def _is_file_already_loaded(self, file_hash: str) -> bool:
         """Check if a file with this hash has already been loaded."""
-        # Store file hash as a separate tracking table or metadata
-        # For now, we'll use a simple approach - check if file exists
-        # You might want to create a separate FileTracking table later
-        return False  # Simplified for now - will enhance if needed
-
-    def _get_next_file_id(self) -> int:
-        """Get the next sequential file ID."""
-        max_id = self.session.query(func.max(CohortUpdate.file_id)).scalar()
-        return (max_id or 0) + 1
+        existing = (
+            self.session.query(FileMetadata)
+            .filter(FileMetadata.file_hash == file_hash)
+            .first()
+        )
+        return existing is not None
 
     def load_file(self, file_path: str, file_type: str) -> dict:
         """
@@ -42,7 +39,7 @@ class CohortService:
             file_type: Either "csv" or "parquet"
 
         Returns:
-            dict with file_id and records_loaded
+            dict with file_id, records_loaded, filename, upload_timestamp, file_hash
 
         Raises:
             FileNotFoundError: If the file doesn't exist
@@ -52,13 +49,16 @@ class CohortService:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Check if file already loaded (simplified - hash-based check)
+        # Check if file already loaded
         file_hash = self._get_file_hash(file_path)
-        # For now, we'll skip the duplicate check since we don't have a tracking table
-        # In production, you'd want to add a FileMetadata table to track this
+        if self._is_file_already_loaded(file_hash):
+            raise ValueError(
+                f"File with hash {file_hash} has already been loaded. Duplicate files are not allowed."
+            )
 
-        # Get next file ID
-        file_id = self._get_next_file_id()
+        # Get file metadata
+        file_size = os.path.getsize(file_path)
+        filename = Path(file_path).name
 
         # Load the file using pandas
         if file_type.lower() == "csv":
@@ -68,8 +68,22 @@ class CohortService:
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
 
+        records_count = len(df)
+
+        # Create file metadata record
+        file_metadata = FileMetadata(
+            filename=filename,
+            file_path=file_path,
+            file_type=file_type.lower(),
+            file_hash=file_hash,
+            file_size_bytes=file_size,
+            records_loaded=records_count,
+        )
+        self.session.add(file_metadata)
+        self.session.flush()  # Get the file_id without committing
+
         # Add the system columns
-        df["file_id"] = file_id
+        df["file_id"] = file_metadata.file_id
 
         # Convert DataFrame to list of dicts for bulk insert
         records = df.to_dict("records")
@@ -80,6 +94,9 @@ class CohortService:
         self.session.commit()
 
         return {
-            "file_id": file_id,
-            "records_loaded": len(records),
+            "file_id": file_metadata.file_id,
+            "records_loaded": records_count,
+            "filename": filename,
+            "upload_timestamp": file_metadata.upload_timestamp.isoformat(),
+            "file_hash": file_hash,
         }

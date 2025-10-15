@@ -32,7 +32,10 @@ def load_file(
         return LoadFileResponse(
             file_id=result["file_id"],
             records_loaded=result["records_loaded"],
-            message=f"Successfully loaded {result['records_loaded']} records",
+            filename=result["filename"],
+            upload_timestamp=result["upload_timestamp"],
+            file_hash=result["file_hash"],
+            message=f"Successfully loaded {result['records_loaded']} records from {result['filename']}",
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
