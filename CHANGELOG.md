@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added - 2025-10-15
 
+- **File Metadata Tracking Feature**
+  - New `FileMetadata` database table to track uploaded files
+  - Tracks filename, file path, file type, file hash (SHA256), file size, upload timestamp, and records loaded
+  - Duplicate file detection using SHA256 hash to prevent reloading the same file
+  - Enhanced `LoadFileResponse` to include file metadata (filename, upload_timestamp, file_hash)
+  - Updated `CohortService` to create file metadata records on upload
+  - Test data files added: `test_cohort_data_20_records.csv` and `test_cohort_data_20_records.parquet` with 20 sample ADD records
+
+- **Demographic Data Loading Feature** (Features 002-loadDemographics, 003-uniqueDemographic)
+  - New `ParticipantDemographic` database table with comprehensive patient demographic fields
+  - Unique constraint on NHS number to ensure one demographic record per patient
+  - Two new API endpoints:
+    - `POST /api/v1/demographic/load-by-file`: Load demographics from all cohort records with specified file_id
+    - `POST /api/v1/demographic/load-by-record`: Load demographic from single cohort record by ID
+  - Upsert functionality: automatically inserts new demographics or updates existing ones based on NHS number
+  - Timestamp tracking with `record_insert_datetime` (on creation) and `record_update_datetime` (on updates)
+  - Detailed response statistics showing records inserted vs updated
+  - Field mapping from cohort data including:
+    - Personal details (names, DOB, gender)
+    - Address information (5 address lines, postcode, PAF key)
+    - Contact information (home/mobile phone, email)
+    - Care provider details (primary care provider, current posting)
+    - Language and accessibility (preferred language, interpreter required)
+    - Death information (date of death, death status)
+  - Full transactional support with automatic rollback on errors
+  - New service layer (`DemographicService`) with upsert logic
+  - API models (`LoadDemographicsByFileRequest`, `LoadDemographicByRecordRequest`, `LoadDemographicsResponse`)
+
 - **Cohort Data File Loading Feature** (Feature 001-loadData)
   - New `POST /api/v1/cohort/load-file` endpoint to load CSV and Parquet files into the database
   - `CohortUpdate` database table with 34 data fields plus 3 system columns:
