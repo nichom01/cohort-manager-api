@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.v1 import cohort, demographic, participant_management, user
+from app.api.v1 import cohort, demographic, participant_management, user, validation
 from app.core.config import config
 from app.core.logging import setup_logging
 from app.db.schema import Base, engine
@@ -18,3 +18,4 @@ app.include_router(demographic.router, prefix="/api/v1/demographic")
 app.include_router(
     participant_management.router, prefix="/api/v1/participant-management"
 )
+app.include_router(validation.router, prefix="/api/v1/validation")

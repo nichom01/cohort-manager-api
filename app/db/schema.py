@@ -198,3 +198,15 @@ class CohortUpdate(Base):
         String, nullable=True
     )
     preferred_language: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class GpPractice(Base):
+    __tablename__ = "gp_practice"
+
+    gp_practice_code: Mapped[str] = mapped_column(String, primary_key=True)
+    bso_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    country_category: Mapped[str | None] = mapped_column(String, nullable=True)
+    audit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audit_created_timestamp: Mapped[datetime | None] = mapped_column(nullable=True)
+    audit_last_modified_timestamp: Mapped[datetime | None] = mapped_column(nullable=True)
+    audit_text: Mapped[str | None] = mapped_column(String, nullable=True)
