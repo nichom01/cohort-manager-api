@@ -17,6 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `CohortService` to create file metadata records on upload
   - Test data files added: `test_cohort_data_20_records.csv` and `test_cohort_data_20_records.parquet` with 20 sample ADD records
 
+- **Participant Management Loading Feature** (Feature 004-loadParticipantManagement)
+  - New `ParticipantManagement` database table with comprehensive screening management fields
+  - Unique constraint on NHS number to ensure one management record per participant
+  - Two new API endpoints:
+    - `POST /api/v1/participant-management/load-by-file`: Load participant management from all cohort records with specified file_id
+    - `POST /api/v1/participant-management/load-by-record`: Load participant management from single cohort record by ID
+  - Upsert functionality: automatically inserts new participants or updates existing ones based on NHS number
+  - Traceability: `cohort_update_id` field links each participant record back to its source cohort record
+  - Timestamp tracking with `record_insert_datetime` (on creation) and `record_update_datetime` (on updates)
+  - Detailed response statistics showing records inserted vs updated
+  - Field mapping from cohort data including:
+    - Core screening fields (screening_id, eligibility_flag, record_type)
+    - Removal information (reason_for_removal, reason_for_removal_from_dt)
+    - Status flags (exception_flag, blocked_flag, referral_flag)
+    - Test scheduling (next_test_due_date, next_test_due_date_calc_method)
+    - Screening status (participant_screening_status, screening_ceased_reason)
+    - Higher risk tracking (is_higher_risk, higher_risk_next_test_due_date, higher_risk_referral_reason_id)
+    - Additional fields (date_irradiated, gene_code_id, business_rule_version)
+  - Full transactional support with automatic rollback on errors
+  - New service layer (`ParticipantManagementService`) with upsert logic
+  - API models (`LoadParticipantManagementByFileRequest`, `LoadParticipantManagementByRecordRequest`, `LoadParticipantManagementResponse`)
+
 - **Demographic Data Loading Feature** (Features 002-loadDemographics, 003-uniqueDemographic)
   - New `ParticipantDemographic` database table with comprehensive patient demographic fields
   - Unique constraint on NHS number to ensure one demographic record per patient
