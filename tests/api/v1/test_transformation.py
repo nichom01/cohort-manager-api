@@ -142,19 +142,27 @@ def test_transform_participant_no_postcode(sample_participant_with_no_postcode):
     assert data["nhs_number"] == sample_participant_with_no_postcode
     assert data["summary"]["rules_applied"] > 0
 
+    # Verify inbound and outbound records exist
+    assert data["inbound"]["demographic"] is not None
+    assert data["outbound"]["demographic"] is not None
+
     # Check that the conditional rule for postcode was applied
     conditional_results = {r["rule_name"]: r for r in data["conditional_results"]}
     assert "set_default_postcode" in conditional_results
     assert conditional_results["set_default_postcode"]["applied"] is True
 
-    # Verify the postcode was actually changed in the database
+    # Verify the transformation in outbound record
+    assert data["inbound"]["demographic"]["post_code"] is None
+    assert data["outbound"]["demographic"]["post_code"] == "UNKNOWN"
+
+    # Verify the database was NOT modified (idempotent)
     session = TestingSessionLocal()
     demographic = (
         session.query(ParticipantDemographic)
         .filter(ParticipantDemographic.nhs_number == sample_participant_with_no_postcode)
         .first()
     )
-    assert demographic.post_code == "UNKNOWN"
+    assert demographic.post_code is None  # Still None, not changed
     session.close()
 
 
@@ -171,20 +179,28 @@ def test_transform_participant_ineligible(sample_participant_ineligible):
     assert data["nhs_number"] == sample_participant_ineligible
     assert data["summary"]["rules_applied"] > 0
 
+    # Verify inbound and outbound records exist
+    assert data["inbound"]["participant_management"] is not None
+    assert data["outbound"]["participant_management"] is not None
+
     # Check that the conditional rule for ineligibility was applied
     conditional_results = {r["rule_name"]: r for r in data["conditional_results"]}
     assert "set_ceased_status_for_ineligible" in conditional_results
     assert conditional_results["set_ceased_status_for_ineligible"]["applied"] is True
 
-    # Verify the screening status was changed
+    # Verify the transformation in outbound record
+    assert data["outbound"]["participant_management"]["participant_screening_status"] == "CEASED"
+    assert data["outbound"]["participant_management"]["screening_ceased_reason"] == "INELIGIBLE"
+
+    # Verify the database was NOT modified (idempotent)
     session = TestingSessionLocal()
     management = (
         session.query(ParticipantManagement)
         .filter(ParticipantManagement.nhs_number == sample_participant_ineligible)
         .first()
     )
-    assert management.participant_screening_status == "CEASED"
-    assert management.screening_ceased_reason == "INELIGIBLE"
+    assert management.participant_screening_status is None  # Not changed
+    assert management.screening_ceased_reason is None  # Not changed
     session.close()
 
 
@@ -201,11 +217,31 @@ def test_transform_participant_special_chars(sample_participant_with_special_cha
     assert data["nhs_number"] == sample_participant_with_special_chars
     assert data["summary"]["rules_applied"] > 0
 
+    # Verify inbound and outbound records exist
+    assert data["inbound"]["demographic"] is not None
+    assert data["outbound"]["demographic"] is not None
+
     # Check that replacement rules were applied
     replacement_results = {r["rule_name"]: r for r in data["replacement_results"]}
     assert len(replacement_results) > 0
 
-    # Verify the transformations were applied
+    # Verify the transformations in outbound record
+    # Name transformations
+    assert data["inbound"]["demographic"]["given_name"] == "Mary-Jane"
+    assert data["outbound"]["demographic"]["given_name"] == "Mary Jane"  # Hyphen replaced with space
+
+    assert data["inbound"]["demographic"]["family_name"] == "O'Connor"
+    assert data["outbound"]["demographic"]["family_name"] == "OConnor"  # Apostrophe removed
+
+    # Postcode transformation
+    assert data["inbound"]["demographic"]["post_code"] == "SW 1A 1AA"
+    assert data["outbound"]["demographic"]["post_code"] == "SW1A1AA"  # Spaces removed
+
+    # Phone number transformation
+    assert data["inbound"]["demographic"]["telephone_number_home"] == "020-1234-5678"
+    assert data["outbound"]["demographic"]["telephone_number_home"] == "02012345678"  # Hyphens removed
+
+    # Verify the database was NOT modified (idempotent)
     session = TestingSessionLocal()
     demographic = (
         session.query(ParticipantDemographic)
@@ -213,15 +249,11 @@ def test_transform_participant_special_chars(sample_participant_with_special_cha
         .first()
     )
 
-    # Name transformations
-    assert demographic.given_name == "Mary Jane"  # Hyphen replaced with space
-    assert demographic.family_name == "OConnor"  # Apostrophe removed
-
-    # Postcode transformation
-    assert demographic.post_code == "SW1A1AA"  # Spaces removed
-
-    # Phone number transformation
-    assert demographic.telephone_number_home == "02012345678"  # Hyphens removed
+    # All original values should be unchanged
+    assert demographic.given_name == "Mary-Jane"
+    assert demographic.family_name == "O'Connor"
+    assert demographic.post_code == "SW 1A 1AA"
+    assert demographic.telephone_number_home == "020-1234-5678"
 
     session.close()
 
@@ -263,6 +295,15 @@ def test_transform_batch(
     assert str(sample_participant_with_no_postcode) in data["results"]
     assert str(sample_participant_ineligible) in data["results"]
 
+    # Verify each result has inbound and outbound records
+    result1 = data["results"][str(sample_participant_with_no_postcode)]
+    assert result1["inbound"]["demographic"] is not None
+    assert result1["outbound"]["demographic"] is not None
+
+    result2 = data["results"][str(sample_participant_ineligible)]
+    assert result2["inbound"]["participant_management"] is not None
+    assert result2["outbound"]["participant_management"] is not None
+
 
 def test_transform_batch_with_invalid_participant(sample_participant_with_no_postcode):
     """Test batch transformation with one invalid participant."""
@@ -292,37 +333,40 @@ def test_transform_batch_with_invalid_participant(sample_participant_with_no_pos
     assert "error" in invalid_result
 
 
-def test_transformation_updates_timestamp(sample_participant_with_no_postcode):
-    """Test that transformation updates the record_update_datetime."""
-    session = TestingSessionLocal()
-
-    # Get original timestamp
-    demographic = (
-        session.query(ParticipantDemographic)
-        .filter(ParticipantDemographic.nhs_number == sample_participant_with_no_postcode)
-        .first()
-    )
-    original_timestamp = demographic.record_update_datetime
-    session.close()
-
-    # Apply transformation
-    response = client.post(
+def test_transformation_idempotent(sample_participant_with_no_postcode):
+    """Test that transformation is idempotent - returns same results on multiple calls."""
+    # First transformation
+    response1 = client.post(
         "/api/v1/transformation/transform-participant",
         json={"nhs_number": sample_participant_with_no_postcode},
     )
+    assert response1.status_code == 200
+    data1 = response1.json()
 
-    assert response.status_code == 200
+    # Second transformation
+    response2 = client.post(
+        "/api/v1/transformation/transform-participant",
+        json={"nhs_number": sample_participant_with_no_postcode},
+    )
+    assert response2.status_code == 200
+    data2 = response2.json()
 
-    # Check timestamp was updated
+    # Verify inbound records are identical (excluding timestamps)
+    assert data1["inbound"]["demographic"]["nhs_number"] == data2["inbound"]["demographic"]["nhs_number"]
+    assert data1["inbound"]["demographic"]["post_code"] == data2["inbound"]["demographic"]["post_code"]
+
+    # Verify outbound records have same transformations (excluding timestamps)
+    assert data1["outbound"]["demographic"]["post_code"] == data2["outbound"]["demographic"]["post_code"]
+    assert data1["outbound"]["demographic"]["post_code"] == "UNKNOWN"
+
+    # Verify database is still unchanged
     session = TestingSessionLocal()
     demographic = (
         session.query(ParticipantDemographic)
         .filter(ParticipantDemographic.nhs_number == sample_participant_with_no_postcode)
         .first()
     )
-    assert demographic.record_update_datetime is not None
-    if original_timestamp:
-        assert demographic.record_update_datetime > original_timestamp
+    assert demographic.post_code is None
     session.close()
 
 

@@ -24,8 +24,17 @@ class TransformationSummary(BaseModel):
     total_field_changes: int
 
 
+class ParticipantRecords(BaseModel):
+    """Container for demographic and participant management records."""
+
+    demographic: dict[str, Any] | None
+    participant_management: dict[str, Any] | None
+
+
 class TransformParticipantResponse(BaseModel):
     nhs_number: int
+    inbound: ParticipantRecords
+    outbound: ParticipantRecords
     conditional_results: list[TransformationResultModel]
     replacement_results: list[TransformationResultModel]
     summary: TransformationSummary

@@ -3,9 +3,13 @@ Transformation service for applying transformation rules to participant data.
 
 This service coordinates the execution of transformation rules, handling
 conditional rules in parallel and grouping replacement rules for efficiency.
+
+The transformation process is idempotent and does not commit changes to the database.
+It returns both inbound (original) and outbound (transformed) records for comparison.
 """
 
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -28,6 +32,8 @@ class TransformationService:
     This service applies two types of rules:
     1. Conditional rules: Executed in parallel
     2. Replacement rules: Grouped and executed together
+
+    The transformation is idempotent - it does not persist changes to the database.
     """
 
     def __init__(self, session: Session):
@@ -38,6 +44,33 @@ class TransformationService:
             session: SQLAlchemy database session
         """
         self.session = session
+
+    def _create_record_snapshot(
+        self, record: Optional[ParticipantDemographic | ParticipantManagement]
+    ) -> Optional[dict]:
+        """
+        Create a serializable snapshot of a database record.
+
+        Args:
+            record: SQLAlchemy ORM object
+
+        Returns:
+            Dictionary representation of the record, or None if record is None
+        """
+        if record is None:
+            return None
+
+        # Get all column names from the SQLAlchemy model
+        snapshot = {}
+        for column in record.__table__.columns:
+            value = getattr(record, column.name)
+            # Convert datetime objects to ISO format strings for serialization
+            if isinstance(value, datetime):
+                snapshot[column.name] = value.isoformat()
+            else:
+                snapshot[column.name] = value
+
+        return snapshot
 
     def _apply_conditional_rules(
         self,
@@ -103,38 +136,69 @@ class TransformationService:
         nhs_number: int,
         conditional_rules: Optional[list[ConditionalTransformationRule]] = None,
         replacement_rules: Optional[list[CharacterReplacementRule]] = None,
-        commit: bool = True,
     ) -> dict:
         """
         Apply transformation rules to a participant's records.
+
+        This method is idempotent and does not commit changes to the database.
+        It returns both the inbound (original) and outbound (transformed) records.
 
         Args:
             nhs_number: NHS number of the participant
             conditional_rules: Optional list of conditional rules. If None, uses all default rules
             replacement_rules: Optional list of replacement rules. If None, uses all default rules
-            commit: Whether to commit changes to the database (default True)
 
         Returns:
-            Dictionary containing transformation results and summary
+            Dictionary containing inbound/outbound records, transformation results, and summary
 
         Raises:
             ValueError: If participant not found
         """
-        # Load participant data
-        demographic = (
+        # Load participant data from database
+        demographic_db = (
             self.session.query(ParticipantDemographic)
             .filter(ParticipantDemographic.nhs_number == nhs_number)
             .first()
         )
 
-        participant_management = (
+        participant_management_db = (
             self.session.query(ParticipantManagement)
             .filter(ParticipantManagement.nhs_number == nhs_number)
             .first()
         )
 
-        if not demographic and not participant_management:
+        if not demographic_db and not participant_management_db:
             raise ValueError(f"No participant found with NHS number {nhs_number}")
+
+        # Create snapshots of inbound (original) records
+        inbound_demographic = self._create_record_snapshot(demographic_db)
+        inbound_management = self._create_record_snapshot(participant_management_db)
+
+        # Create working copies for transformation (detached from session)
+        # We need to use make_transient to detach from session but keep as ORM objects
+        from sqlalchemy.orm import make_transient
+
+        demographic_copy = None
+        if demographic_db:
+            self.session.expunge(demographic_db)  # Detach from session
+            demographic_copy = demographic_db
+
+        management_copy = None
+        if participant_management_db:
+            self.session.expunge(participant_management_db)  # Detach from session
+            management_copy = participant_management_db
+
+        # Rollback to prevent any accidental commits
+        self.session.rollback()
+
+        # Reload fresh copies from database for working with
+        demographic_work = None
+        if inbound_demographic:
+            demographic_work = ParticipantDemographic(**inbound_demographic)
+
+        management_work = None
+        if inbound_management:
+            management_work = ParticipantManagement(**inbound_management)
 
         # Determine which rules to use
         cond_rules = conditional_rules if conditional_rules is not None else ALL_CONDITIONAL_RULES
@@ -142,23 +206,24 @@ class TransformationService:
 
         # Apply conditional rules in parallel
         conditional_results = self._apply_conditional_rules(
-            demographic, participant_management, cond_rules
+            demographic_work, management_work, cond_rules
         )
 
         # Apply replacement rules sequentially
         replacement_results = self._apply_replacement_rules(
-            demographic, participant_management, repl_rules
+            demographic_work, management_work, repl_rules
         )
 
-        # Update timestamps
-        if demographic:
-            demographic.record_update_datetime = datetime.now(UTC)
-        if participant_management:
-            participant_management.record_update_datetime = datetime.now(UTC)
+        # Update timestamps on transformed records
+        transformation_time = datetime.now(UTC)
+        if demographic_work:
+            demographic_work.record_update_datetime = transformation_time
+        if management_work:
+            management_work.record_update_datetime = transformation_time
 
-        # Commit changes if requested
-        if commit:
-            self.session.commit()
+        # Create snapshots of outbound (transformed) records
+        outbound_demographic = self._create_record_snapshot(demographic_work)
+        outbound_management = self._create_record_snapshot(management_work)
 
         # Calculate summary statistics
         all_results = conditional_results + replacement_results
@@ -167,6 +232,14 @@ class TransformationService:
 
         return {
             "nhs_number": nhs_number,
+            "inbound": {
+                "demographic": inbound_demographic,
+                "participant_management": inbound_management,
+            },
+            "outbound": {
+                "demographic": outbound_demographic,
+                "participant_management": outbound_management,
+            },
             "conditional_results": conditional_results,
             "replacement_results": replacement_results,
             "summary": {
@@ -181,16 +254,17 @@ class TransformationService:
         nhs_numbers: list[int],
         conditional_rules: Optional[list[ConditionalTransformationRule]] = None,
         replacement_rules: Optional[list[CharacterReplacementRule]] = None,
-        commit: bool = True,
     ) -> dict:
         """
         Apply transformation rules to multiple participants.
+
+        This method is idempotent and does not commit changes to the database.
+        Each participant transformation returns inbound and outbound records.
 
         Args:
             nhs_numbers: List of NHS numbers to transform
             conditional_rules: Optional list of conditional rules
             replacement_rules: Optional list of replacement rules
-            commit: Whether to commit changes to the database (default True)
 
         Returns:
             Dictionary containing results for all participants
@@ -205,7 +279,6 @@ class TransformationService:
                     nhs_number,
                     conditional_rules,
                     replacement_rules,
-                    commit=False,  # Commit all at once at the end
                 )
                 results[nhs_number] = result
                 successful += 1
@@ -215,14 +288,6 @@ class TransformationService:
                     "nhs_number": nhs_number,
                 }
                 failed += 1
-
-        # Commit all changes if requested
-        if commit:
-            try:
-                self.session.commit()
-            except Exception as e:
-                self.session.rollback()
-                raise ValueError(f"Failed to commit transformations: {str(e)}")
 
         return {
             "results": results,

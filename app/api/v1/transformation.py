@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.schema import SessionLocal
 from app.models.transformation import (
+    ParticipantRecords,
     TransformBatchRequest,
     TransformBatchResponse,
     TransformBatchSummary,
@@ -31,15 +32,18 @@ def transform_participant(
     character replacement rules (Type 2) to the participant's demographic and
     management records.
 
+    This endpoint is idempotent and does not commit changes to the database.
+    It returns both inbound (original) and outbound (transformed) records.
+
     Conditional rules are executed in parallel for performance, while replacement
-    rules are grouped and executed together. All changes are committed to the
-    database and update timestamps are set.
+    rules are grouped and executed together.
 
     Args:
         request: TransformParticipantRequest containing NHS number
 
     Returns:
-        TransformParticipantResponse with transformation results and summary
+        TransformParticipantResponse with inbound/outbound records,
+        transformation results, and summary
 
     Raises:
         HTTPException: If participant not found or transformation fails
@@ -70,8 +74,14 @@ def transform_participant(
 
         summary = TransformationSummary(**result["summary"])
 
+        # Create inbound and outbound record containers
+        inbound = ParticipantRecords(**result["inbound"])
+        outbound = ParticipantRecords(**result["outbound"])
+
         return TransformParticipantResponse(
             nhs_number=result["nhs_number"],
+            inbound=inbound,
+            outbound=outbound,
             conditional_results=conditional_results,
             replacement_results=replacement_results,
             summary=summary,
@@ -93,8 +103,8 @@ def transform_batch(
     """
     Apply transformation rules to multiple participants.
 
-    This endpoint applies transformation rules to each participant in the batch.
-    All changes are committed together in a single transaction for consistency.
+    This endpoint is idempotent and does not commit changes to the database.
+    Each participant transformation returns both inbound and outbound records.
 
     Args:
         request: TransformBatchRequest containing list of NHS numbers
@@ -139,8 +149,14 @@ def transform_batch(
 
                 summary = TransformationSummary(**result["summary"])
 
+                # Create inbound and outbound record containers
+                inbound = ParticipantRecords(**result["inbound"])
+                outbound = ParticipantRecords(**result["outbound"])
+
                 participant_responses[nhs_number] = TransformParticipantResponse(
                     nhs_number=result["nhs_number"],
+                    inbound=inbound,
+                    outbound=outbound,
                     conditional_results=conditional_results,
                     replacement_results=replacement_results,
                     summary=summary,
