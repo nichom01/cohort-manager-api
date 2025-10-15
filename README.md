@@ -28,6 +28,27 @@ The API will be available at `http://localhost:8000`
 
 Interactive API documentation: `http://localhost:8000/docs`
 
+### Database Connection
+
+The application uses SQLite as the database. Once the server starts:
+- Database file: `test.db` (created automatically in the project root)
+- No credentials required (file-based database)
+- Connection string: `sqlite:///./test.db`
+
+**Connect with Azure Data Studio:**
+1. Install the SQLite extension
+2. Create new connection with path: `/path/to/project/test.db`
+3. No username/password needed
+
+**Connect with SQLite CLI:**
+```bash
+sqlite3 test.db
+.tables                    # View all tables
+SELECT * FROM users;       # Query users table
+SELECT * FROM cohort_update LIMIT 10;  # Query cohort data
+.exit                      # Exit
+```
+
 ## Running Tests
 
 Run all tests:
@@ -65,9 +86,59 @@ docker run -p 8000:80 fastapi-app
 
 The API will be available at `http://localhost:8000`
 
-## Example Requests
+## API Endpoints
 
-Here's a set of simple curl examples you can use to interact with the API:
+### Cohort Data Loading
+
+Load CSV or Parquet files containing cohort data into the database.
+
+**Endpoint:** `POST /api/v1/cohort/load-file`
+
+**Request Body:**
+```json
+{
+  "file_path": "/path/to/your/file.csv",
+  "file_type": "csv"
+}
+```
+
+**Example - Load CSV file:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "file_path": "/Users/yourname/data/cohort_data.csv",
+       "file_type": "csv"
+     }'
+```
+
+**Example - Load Parquet file:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "file_path": "/Users/yourname/data/cohort_data.parquet",
+       "file_type": "parquet"
+     }'
+```
+
+**Response:**
+```json
+{
+  "file_id": 1,
+  "records_loaded": 150,
+  "message": "Successfully loaded 150 records"
+}
+```
+
+**Note:** The file must exist on the server where the API is running. The endpoint loads the file into the `cohort_update` table with automatically generated:
+- `id` - Primary key (auto-increment)
+- `create_date` - Timestamp when record was loaded
+- `file_id` - Sequential file identifier
+
+### User Management
+
+Here's a set of simple curl examples for user management:
 
 ### 1️⃣ Create a User
 
