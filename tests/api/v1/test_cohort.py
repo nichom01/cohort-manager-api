@@ -129,7 +129,7 @@ def test_load_unsupported_file_type(sample_csv_file):
     assert "Unsupported file type" in response.json()["detail"]
 
 
-def test_sequential_file_ids(sample_csv_file):
+def test_sequential_file_ids(sample_csv_file, sample_parquet_file):
     """Test that file IDs are sequential."""
     # Load first file
     response1 = client.post(
@@ -139,10 +139,10 @@ def test_sequential_file_ids(sample_csv_file):
     assert response1.status_code == 200
     assert response1.json()["file_id"] == 1
 
-    # Load second file
+    # Load second file (use different file to avoid duplicate detection)
     response2 = client.post(
         "/api/v1/cohort/load-file",
-        json={"file_path": sample_csv_file, "file_type": "csv"},
+        json={"file_path": sample_parquet_file, "file_type": "parquet"},
     )
     assert response2.status_code == 200
     assert response2.json()["file_id"] == 2
