@@ -28,6 +28,26 @@ The API will be available at `http://localhost:8000`
 
 Interactive API documentation: `http://localhost:8000/docs`
 
+### Stopping the Server and Resetting the Database
+
+Stop the development server and remove the database:
+
+```bash
+# Kill all uvicorn processes
+lsof -ti:8000 | xargs kill -9 2>/dev/null
+
+# Remove the database file
+rm -f test.db
+```
+
+Or combine both commands:
+
+```bash
+lsof -ti:8000 | xargs kill -9 2>/dev/null && rm -f test.db && echo "Server stopped and database removed"
+```
+
+**Note:** This will completely remove all data. You'll need to re-seed the database with GP practices after restarting the server.
+
 ### Database Connection
 
 The application uses SQLite as the database. Once the server starts:
