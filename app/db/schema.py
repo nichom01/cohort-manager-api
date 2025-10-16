@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, Integer, String, create_engine
+from sqlalchemy import BigInteger, Boolean, Integer, SmallInteger, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from app.core.config import config
@@ -210,3 +211,79 @@ class GpPractice(Base):
     audit_created_timestamp: Mapped[datetime | None] = mapped_column(nullable=True)
     audit_last_modified_timestamp: Mapped[datetime | None] = mapped_column(nullable=True)
     audit_text: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class CohortDistribution(Base):
+    """
+    Distribution records ready for downstream systems.
+
+    This table stores participant data that has been validated and transformed,
+    ready to be extracted by downstream systems. The is_extracted flag tracks
+    whether the record has been collected, and request_id groups extractions.
+    """
+    __tablename__ = "cohort_distribution"
+
+    # Primary key
+    cohort_distribution_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+
+    # Participant identifiers
+    nhs_number: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    participant_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    superseded_nhs_number: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # Care provider information
+    primary_care_provider: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    primary_care_provider_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+    current_posting: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    current_posting_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Name fields
+    name_prefix: Mapped[str | None] = mapped_column(String(35), nullable=True)
+    given_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    other_given_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    family_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    previous_family_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Personal details
+    date_of_birth: Mapped[datetime | None] = mapped_column(nullable=True)
+    date_of_death: Mapped[datetime | None] = mapped_column(nullable=True)
+    gender: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+    # Address fields
+    address_line_1: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address_line_2: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address_line_3: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address_line_4: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address_line_5: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    post_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    usual_address_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Removal information
+    reason_for_removal: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    reason_for_removal_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Contact information
+    telephone_number_home: Mapped[str | None] = mapped_column(String(35), nullable=True)
+    telephone_number_home_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+    telephone_number_mob: Mapped[str | None] = mapped_column(String(35), nullable=True)
+    telephone_number_mob_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+    email_address_home: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    email_address_home_from_dt: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Language and accessibility
+    preferred_language: Mapped[str | None] = mapped_column(String(35), nullable=True)
+    interpreter_required: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+    # Extraction tracking
+    is_extracted: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=0, index=True
+    )
+    request_id: Mapped[UUID | None] = mapped_column(String(36), nullable=True, index=True)
+
+    # Audit fields
+    record_insert_datetime: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC)
+    )
+    record_update_datetime: Mapped[datetime | None] = mapped_column(nullable=True)
