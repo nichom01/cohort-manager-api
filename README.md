@@ -136,6 +136,78 @@ curl -X POST "http://localhost:8000/api/v1/cohort/load-file" \
 - `create_date` - Timestamp when record was loaded
 - `file_id` - Sequential file identifier
 
+### Orchestration - Full Pipeline Processing
+
+Process a file through the complete 7-stage pipeline automatically. This endpoint orchestrates all stages from data loading through distribution.
+
+**Endpoint:** `POST /api/v1/orchestration/process-file`
+
+**Pipeline Stages:**
+1. **Cohort Loading** - Load file into cohort_update table
+2. **Demographics Loading** - Map data to participant_demographic table
+3. **Participant Management Loading** - Map data to participant_management table
+4. **Validation** - Run validation rules on all records
+5. **Exception Creation** - Create exception records for validation failures
+6. **Transformation** - Apply transformation rules (idempotent)
+7. **Distribution** - Load validated records to cohort_distribution table
+
+**Request Body:**
+```json
+{
+  "file_path": "/path/to/your/file.csv",
+  "file_type": "csv"
+}
+```
+
+**Example - Process a CSV file:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/orchestration/process-file" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "file_path": "./tests/uploads/test_cohort_data_20_records.csv",
+       "file_type": "csv"
+     }'
+```
+
+**Response:**
+```json
+{
+  "file_id": 1,
+  "filename": "test_cohort_data_20_records.csv",
+  "total_records": 20,
+  "records_processed": 20,
+  "records_passed": 18,
+  "records_failed": 2,
+  "stages_completed": [
+    "cohort",
+    "demographics",
+    "participant_management",
+    "validation",
+    "transformation",
+    "distribution"
+  ],
+  "current_stage": "complete",
+  "is_complete": true,
+  "has_errors": false
+}
+```
+
+**Query File Processing Status:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/orchestration/file-status/1"
+```
+
+**Query Individual Record Status:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/orchestration/record-status/1/1234567890"
+```
+
+**Status Tracking:**
+- **File-level status** - Track overall progress, stage completion, record counts
+- **Record-level status** - Track individual NHS number progress through each stage
+- **Exception tracking** - Validation failures are automatically logged to exception_management table
+- **Distribution output** - Successfully validated records appear in cohort_distribution table
+
 ### User Management
 
 Here's a set of simple curl examples for user management:
