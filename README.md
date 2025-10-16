@@ -244,41 +244,7 @@ curl -X GET "http://localhost:8000/api/v1/orchestration/record-status/1/12345678
 - **Exception tracking** - Validation failures are automatically logged to exception_management table
 - **Distribution output** - Successfully validated records appear in cohort_distribution table
 
-### User Management
 
-Here's a set of simple curl examples for user management:
-
-### 1️⃣ Create a User
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/users" \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Ada Lovelace"}'
-```
-
-### 2️⃣ Get All Users
-
-```bash
-curl -X GET "http://localhost:8000/api/v1/users"
-```
-
-### 3️⃣ Get a User by ID
-
-(Replace 1 with the actual ID from the create response)
-
-```bash
-curl -X GET "http://localhost:8000/api/v1/users/1"
-```
-
-### 4️⃣ Update a User
-
-```bash
-curl -X PUT "http://localhost:8000/api/v1/users/1" \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Grace Hopper"}'
-```
-
-### 5️⃣ Delete a User
 
 ```bash
 curl -X DELETE "http://localhost:8000/api/v1/users/1"
