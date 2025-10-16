@@ -1,4 +1,4 @@
-# FastAPI User Management API
+# Cohort Manager
 
 A FastAPI-based REST API with SQLAlchemy ORM and SQLite database.
 
