@@ -213,6 +213,81 @@ class GpPractice(Base):
     audit_text: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
+class FileProcessingStatus(Base):
+    """
+    Track processing status for each file through the pipeline.
+
+    This table maintains the overall status of a file as it progresses
+    through each stage of the cohort processing workflow.
+    """
+    __tablename__ = "file_processing_status"
+
+    file_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Stage completion flags
+    cohort_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    demographics_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    participant_management_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    validation_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    transformation_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    distribution_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Counts
+    total_records: Mapped[int] = mapped_column(Integer, default=0)
+    records_passed: Mapped[int] = mapped_column(Integer, default=0)
+    records_failed: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Overall status
+    current_stage: Mapped[str] = mapped_column(String, default="cohort_loading")
+    is_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_errors: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Timestamps
+    started_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_updated: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+
+class RecordProcessingStatus(Base):
+    """
+    Track processing status for individual records within a file.
+
+    This table maintains the status of each NHS number record as it
+    progresses through each stage of processing.
+    """
+    __tablename__ = "record_processing_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    file_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    nhs_number: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    cohort_update_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Stage completion flags
+    demographics_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    participant_management_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    validation_passed: Mapped[bool] = mapped_column(Boolean, default=False)
+    transformation_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    distributed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Error tracking
+    has_validation_errors: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_transformation_errors: Mapped[bool] = mapped_column(Boolean, default=False)
+    exception_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Current status
+    current_stage: Mapped[str] = mapped_column(String, default="demographics_loading")
+    is_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+
 class ExceptionManagement(Base):
     """
     Exception tracking for validation and transformation failures.
