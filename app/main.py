@@ -8,7 +8,6 @@ from app.api.v1 import (
     orchestration,
     participant_management,
     transformation,
-    user,
     validation,
 )
 from app.core.config import config
@@ -22,7 +21,6 @@ app = FastAPI(title=config.app_name)
 
 
 # Register routes
-app.include_router(user.router, prefix="/api/v1")
 app.include_router(cohort.router, prefix="/api/v1/cohort")
 app.include_router(demographic.router, prefix="/api/v1/demographic")
 app.include_router(
