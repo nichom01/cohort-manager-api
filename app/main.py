@@ -5,6 +5,7 @@ from app.api.v1 import (
     demographic,
     distribution,
     exception,
+    orchestration,
     participant_management,
     transformation,
     user,
@@ -31,3 +32,4 @@ app.include_router(validation.router, prefix="/api/v1/validation")
 app.include_router(transformation.router, prefix="/api/v1/transformation")
 app.include_router(distribution.router, prefix="/api/v1/distribution")
 app.include_router(exception.router, prefix="/api/v1/exception")
+app.include_router(orchestration.router, prefix="/api/v1/orchestration")
