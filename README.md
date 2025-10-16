@@ -49,6 +49,22 @@ SELECT * FROM cohort_update LIMIT 10;  # Query cohort data
 .exit                      # Exit
 ```
 
+### Seeding Test Data
+
+The application requires GP practice reference data for validation. Seed the database with test GP practices:
+
+```bash
+uv run python -m scripts.seed_gp_practices
+```
+
+This populates the `gp_practice` table with 35 GP practice codes that match the test data, including:
+- GP001, GP002 (orchestration tests)
+- GP0001-GP0020 (CSV test file)
+- A12345, B23456, C34567 (validation tests)
+- And additional test codes
+
+**Note:** This is required before running the orchestration pipeline with test data, as validation checks ensure GP practices exist.
+
 ## Running Tests
 
 Run all tests:
