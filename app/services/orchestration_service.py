@@ -95,13 +95,9 @@ class OrchestrationService:
 
     def _load_cohort(self, file_path: str, file_type: str) -> tuple[int, int, str]:
         """Stage 1: Load cohort file."""
-        file_id, records_loaded = self.cohort_service.load_file(file_path, file_type)
+        result = self.cohort_service.load_file(file_path, file_type)
 
-        # Get filename
-        metadata = self.cohort_service.get_file_metadata(file_id)
-        filename = metadata.filename if metadata else file_path
-
-        return file_id, records_loaded, filename
+        return result["file_id"], result["records_loaded"], result["filename"]
 
     def _init_file_status(
         self, file_id: int, filename: str, total_records: int
@@ -121,7 +117,7 @@ class OrchestrationService:
     def _load_demographics(self, file_id: int, file_status: FileProcessingStatus):
         """Stage 2: Load demographics."""
         try:
-            self.demographic_service.load_demographics_by_file(file_id)
+            self.demographic_service.load_demographics_by_file_id(file_id)
             file_status.demographics_loaded = True
             file_status.current_stage = "participant_management_loading"
             self.session.commit()
@@ -135,7 +131,7 @@ class OrchestrationService:
     ):
         """Stage 3: Load participant management."""
         try:
-            self.participant_mgmt_service.load_participant_management_by_file(file_id)
+            self.participant_mgmt_service.load_participant_management_by_file_id(file_id)
             file_status.participant_management_loaded = True
             file_status.current_stage = "validation"
             self.session.commit()
