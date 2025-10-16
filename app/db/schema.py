@@ -213,6 +213,47 @@ class GpPractice(Base):
     audit_text: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
+class ExceptionManagement(Base):
+    """
+    Exception tracking for validation and transformation failures.
+
+    This table tracks exceptions that occur during data processing,
+    such as validation failures, transformation errors, or data quality issues.
+    Exceptions can be resolved by setting date_resolved.
+    """
+    __tablename__ = "exception_management"
+
+    # Primary key
+    exception_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+
+    # Exception details
+    category: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rule_description: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_fatal: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
+    # Participant and file context
+    nhs_number: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    file_name: Mapped[str | None] = mapped_column(String(250), nullable=True)
+    error_record: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Cohort context
+    cohort_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    screening_name: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+
+    # Dates
+    exception_date: Mapped[datetime | None] = mapped_column(nullable=True)
+    date_created: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    date_resolved: Mapped[datetime | None] = mapped_column(nullable=True)
+    record_updated_date: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # ServiceNow integration
+    servicenow_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    servicenow_created_date: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class CohortDistribution(Base):
     """
     Distribution records ready for downstream systems.
