@@ -103,11 +103,13 @@ class OrchestrationService:
         self, file_id: int, filename: str, total_records: int
     ) -> FileProcessingStatus:
         """Initialize file processing status."""
+        now = datetime.now(UTC)
         file_status = FileProcessingStatus(
             file_id=file_id,
             filename=filename,
             total_records=total_records,
             cohort_loaded=True,
+            cohort_loaded_at=now,
             current_stage="demographics_loading",
         )
         self.session.add(file_status)
@@ -119,6 +121,7 @@ class OrchestrationService:
         try:
             self.demographic_service.load_demographics_by_file_id(file_id)
             file_status.demographics_loaded = True
+            file_status.demographics_loaded_at = datetime.now(UTC)
             file_status.current_stage = "participant_management_loading"
             self.session.commit()
         except Exception as e:
@@ -133,6 +136,7 @@ class OrchestrationService:
         try:
             self.participant_mgmt_service.load_participant_management_by_file_id(file_id)
             file_status.participant_management_loaded = True
+            file_status.participant_management_loaded_at = datetime.now(UTC)
             file_status.current_stage = "validation"
             self.session.commit()
         except Exception as e:
@@ -160,12 +164,15 @@ class OrchestrationService:
                 continue
 
             # Create record status
+            now = datetime.now(UTC)
             record_status = RecordProcessingStatus(
                 file_id=file_id,
                 nhs_number=record.nhs_number,
                 cohort_update_id=record.id,
                 demographics_loaded=file_status.demographics_loaded,
+                demographics_loaded_at=file_status.demographics_loaded_at,
                 participant_management_loaded=file_status.participant_management_loaded,
+                participant_management_loaded_at=file_status.participant_management_loaded_at,
                 current_stage="validation",
             )
             self.session.add(record_status)
@@ -183,6 +190,7 @@ class OrchestrationService:
                     records_failed += 1
                     record_status.has_validation_errors = True
                     record_status.validation_passed = False
+                    record_status.validation_passed_at = datetime.now(UTC)
 
                     # Create exceptions for failures
                     for result in validation_results:
@@ -197,6 +205,7 @@ class OrchestrationService:
                 else:
                     records_passed += 1
                     record_status.validation_passed = True
+                    record_status.validation_passed_at = datetime.now(UTC)
 
             except Exception:
                 records_failed += 1
@@ -209,6 +218,7 @@ class OrchestrationService:
             self.exception_service.create_exceptions(exception_records)
 
         file_status.validation_complete = True
+        file_status.validation_complete_at = datetime.now(UTC)
         file_status.records_passed = records_passed
         file_status.records_failed = records_failed
         file_status.has_errors = records_failed > 0
@@ -243,11 +253,13 @@ class OrchestrationService:
                     # Apply transformation (idempotent, doesn't modify DB)
                     self.transformation_service.transform_participant(record.nhs_number)
                     record_status.transformation_applied = True
+                    record_status.transformation_applied_at = datetime.now(UTC)
                     record_status.current_stage = "distribution_loading"
                 except Exception:
                     record_status.has_transformation_errors = True
 
         file_status.transformation_complete = True
+        file_status.transformation_complete_at = datetime.now(UTC)
         file_status.current_stage = "distribution_loading"
         self.session.commit()
 
@@ -300,12 +312,15 @@ class OrchestrationService:
             self.distribution_service.create_distribution_records(distribution_records)
 
         # Update record statuses
+        now = datetime.now(UTC)
         for record_status in record_statuses:
             record_status.distributed = True
+            record_status.distributed_at = now
             record_status.is_complete = True
             record_status.current_stage = "complete"
 
         file_status.distribution_loaded = True
+        file_status.distribution_loaded_at = datetime.now(UTC)
         self.session.commit()
 
     def _build_response(self, file_status: FileProcessingStatus) -> dict:

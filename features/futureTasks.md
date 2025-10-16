@@ -2,7 +2,7 @@
 to do
 -----
 
-remove user items from template
+remove user items from template - DONE
 record timings for each section in tracking
 implement further reference data
 implement further validation rules

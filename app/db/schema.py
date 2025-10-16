@@ -226,6 +226,14 @@ class FileProcessingStatus(Base):
     transformation_complete: Mapped[bool] = mapped_column(Boolean, default=False)
     distribution_loaded: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Stage completion timestamps
+    cohort_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    demographics_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    participant_management_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    validation_complete_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    transformation_complete_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    distribution_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
     # Counts
     total_records: Mapped[int] = mapped_column(Integer, default=0)
     records_passed: Mapped[int] = mapped_column(Integer, default=0)
@@ -264,6 +272,13 @@ class RecordProcessingStatus(Base):
     validation_passed: Mapped[bool] = mapped_column(Boolean, default=False)
     transformation_applied: Mapped[bool] = mapped_column(Boolean, default=False)
     distributed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Stage completion timestamps
+    demographics_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    participant_management_loaded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    validation_passed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    transformation_applied_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    distributed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # Error tracking
     has_validation_errors: Mapped[bool] = mapped_column(Boolean, default=False)
